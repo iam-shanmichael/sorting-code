@@ -1,0 +1,188 @@
+body: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: FutureBuilder<List<UserBalanceModel>>(
+          future: AccountLedgerRestRepository()
+              .getUserBalance(userId: widget.userID),
+          builder: (context, AsyncSnapshot<List<UserBalanceModel>> snapshot) {
+            switch (snapshot.connectionState) {
+              case ConnectionState.waiting:
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primaryDark,
+                  ),
+                );
+              default:
+                if (snapshot.hasError || snapshot.data == null) {
+                  var _msg = snapshot.error is DioError
+                      ? snapshot.error.toString()
+                      : 'Unknown Error Occured';
+                  print(snapshot.error);
+
+                  return Center(
+                    child: Text(
+                      'Error: $_msg',
+                      style: TextStyle(
+                        color: Colors.red,
+                      ),
+                    ),
+                  );
+                } else {
+                   //List<UserBalanceModel> data;
+                  //snapshot.data!.sort((a, b) => -a.ccy.compareTo(b.ccy));
+                  return Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(20.0),
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Container(
+                                  width: 150,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: isLoading.value
+                                        ? null
+                                        : () => downloadCSV(context),
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(16.0),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Download CSV',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          color: AppColors.background),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              width: 10,
+                            )
+                          ],
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Color(0xFFE8E9ED),
+                          ),
+                        ),
+                        width: MediaQuery.of(context).size.width,
+                        child: DataTable(
+                          sortColumnIndex: _currentSortColumn,
+                          sortAscending: _isSort,
+                          columns: [
+                            DataColumn(
+                              label: const Text('User ID'),
+                              numeric: false,
+                            ),
+                            DataColumn(
+                              label: const Text('Email'),
+                            ),
+                            DataColumn(
+                                label: const Text('Currency'), // Need to Fix
+                                tooltip: 'Currency',
+                                numeric: false,
+                                onSort: (int columnIndex, bool ascending){
+                                  print("$columnIndex $ascending");
+                                  print(_currentSortColumn);
+                                  setState(() {
+                                    _currentSortColumn = columnIndex;
+                                    // if(!ascending){
+                                    //   // snapshot.data!.sort((data1, data2) =>
+                                    //   //     compareString(ascending, data1.ccy, data2.ccy));
+                                    //   snapshot.data!.sort((a, b) => a.ccy.compareTo(b.ccy));
+                                    //   //print(snapshot.data!.);
+                                    // } else {
+                                    //   snapshot.data!.sort((a, b) => -a.ccy.compareTo(b.ccy));
+                                    // }
+                                    if(columnIndex == 0){
+                                      if(ascending){
+                                        snapshot.data!.sort((a, b) => a.ccy.compareTo(b.ccy));
+                                      }else {
+                                        snapshot.data!.sort((a, b) => -a.ccy.compareTo(b.ccy));
+                                      }
+                                    }
+                                    _isSort = ascending;
+                                  });
+                                }
+                            ),
+                            DataColumn(
+                              label: const Text('Total'),
+                            ),
+                            DataColumn(
+                              label: const  Text('Available'),
+                            ),
+                            DataColumn(
+                              label: const Text('Hold'),
+                            ),
+                          ],
+                          rows: List<DataRow>.generate(
+                            snapshot.data!.length,
+                                (int index) => DataRow(
+                              color: MaterialStateProperty.resolveWith<Color?>(
+                                      (Set<MaterialState> states) {
+                                    // All rows will have the same selected color.
+                                    if (states.contains(MaterialState.selected)) {
+                                      return Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withOpacity(0.08);
+                                    }
+                                    // Even rows will have a grey color.
+                                    if (index.isEven) {
+                                      return Color(0xFFF9FAFB);
+                                    }
+                                    return null; // Use default value for other states and odd rows.
+                                  }),
+                              cells: <DataCell>[
+                                DataCell(
+                                  Text(
+                                    snapshot.data![index].userId.toString(),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    snapshot.data![index].walletAccount,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    snapshot.data![index].ccy,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    snapshot.data![index].total.toString(),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(snapshot.data![index].available
+                                      .toString()),
+                                ),
+                                DataCell(
+                                  Text(
+                                    snapshot.data![index].hold.toString(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            growable: true, //false
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+            }
+          },
+        ),
+      ),
